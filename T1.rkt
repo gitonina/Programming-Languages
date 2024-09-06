@@ -82,7 +82,7 @@
 (define (mysterious-cf-aux1 n)
   (if (zero? n)
       (simple 6)
-      (compound 6 1 (mysterious-cf-aux2 (+ n 1) h ))))
+      (compound 6 1 (mysterious-cf-aux2 (+ n 1) 2 ))))
 
 
 ;; mysterious-cf-aux2 :: Integer Integer -> CFraction
