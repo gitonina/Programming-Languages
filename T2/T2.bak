@@ -22,7 +22,7 @@ En caso que afirmativo, indique con quién y sobre qué ejercicio:
 #|
 <prop> ::= (tt)
          | (ff)
-         | (p-id <sym>)
+         | (id <sym>)
          | (p-not <prop>)
          | (p-and <prop>)
          | (p-or <prop>)
@@ -36,7 +36,7 @@ En caso que afirmativo, indique con quién y sobre qué ejercicio:
   (p-and a)
   (p-or o)
   (p-where p i q)
-  (p-id s)
+  ; ...
   )
 
 
@@ -49,32 +49,11 @@ Concrete syntax of propositions:
 
 <s-prop> ::= true
           | false
-          |<sym>
-          |(list 'not <s-expr>)
-          |(list 'and <s-expr>)
-          |(list 'or <s-expr>)
-          |(list '<s-expr> where(list <sym> <s-expr>)) 
+          | ...
 |#
 
 ;; parse-prop : <s-prop> -> Prop
-(define (parse-prop s-expr)
-   (match s-expr
-     ['true (tt)]      
-     ['false (ff)]
-     [(? symbol? x) (p-id x) ]
-     [(list 'and formula ...)
-       (if (< (length formula) 2)
-         (error 'parse-prop "and expects at least two operands")
-         (p-and (map parse-prop formula)))] 
-
-     [(list 'or formula ...)   (if (< (length formula) 2)
-         (error 'parse-prop "or expects at least two operands")
-         (p-or (map parse-prop formula)))]
-     
-     [(list 'not formula) (p-not  (parse-prop formula))]
-     [(list formula 'where (list id expr)) (p-where (parse-prop formula) id (parse-prop expr))]
-     )
-  )
+(define (parse-prop s-expr) '???)
 
 
 ;;----- ;;
