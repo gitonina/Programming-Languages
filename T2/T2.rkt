@@ -24,9 +24,9 @@ En caso que afirmativo, indique con quién y sobre qué ejercicio:
          | (ff)
          | (p-id <sym>)
          | (p-not <prop>)
-         | (p-and <prop>)
-         | (p-or <prop>)
-         | (p-where <prop> <id> <prop>)
+         | (p-and <prop> <prop> <prop>*)
+         | (p-or <prop> <prop> <prop>*)
+         | (p-where <prop> <sym> <prop>)
 |#
 
 (deftype Prop
@@ -51,12 +51,13 @@ Concrete syntax of propositions:
           | false
           |<sym>
           |(list 'not <s-prop>)
-          |(list 'and <s-prop>)
-          |(list 'or <s-prop>)
+          |(list 'and <s-prop> <s-prop> <s-prop>*)
+          |(list 'or <s-prop> <s-prop> <s-prop>*)
           |(list '<s-prop> where(list <sym> <s-prop>)) 
 |#
 
 ;; parse-prop : <s-prop> -> Prop
+;; Parse una expresión s a una proposición
 (define (parse-prop s-expr)
    (match s-expr
      ['true (tt)]      
@@ -93,6 +94,7 @@ Concrete syntax of propositions:
 
 
 ;; from-Pvalue : PValue -> Prop
+;; Convierte un PValue a un Prop
 (define (from-PValue pv)
   (match pv
     [(ttV) (tt)]
@@ -106,6 +108,8 @@ Concrete syntax of propositions:
 
 
 ;; p-subst : Prop Symbol Prop -> Prop
+;;Usa pattern matching para substituir identificadores. Para el caso de p-where, ve primero si hay una
+;;definición local antes de subtituir
 (define (p-subst target name substitution)
   (match target
     [(tt) (tt)]
@@ -127,6 +131,8 @@ Concrete syntax of propositions:
 
 
 ;; eval-or : (Listof Prop) -> PValue
+;;Es una función auxiliar
+;;Usa lo que se denomina corto circuito para evaluar una proposición que tenga valores de verdad y así poder dererminar su valor.
 (define (eval-or ps)
   (match ps
     ['() (ffV)] 
@@ -138,6 +144,8 @@ Concrete syntax of propositions:
 
 
 ;; eval-and : (Listof Prop) -> PValue
+;;Es una función auxiliar
+;;Usa lo que se denomina corto circuito para evaluar una proposición que tenga valores de verdad y así poder dererminar su valor.
 (define (eval-and ps)
   (match ps
     ['() (ttV)]  
@@ -148,6 +156,7 @@ Concrete syntax of propositions:
            (eval-and rest)))]))
 
 ;; p-eval : Prop -> PValue
+;; Evalua Prop a PValue
 (define (p-eval p)
   (match p
     [(tt) (ttV)]
@@ -205,6 +214,7 @@ Concrete syntax of expressions:
 |#
 
 ;; parse : <s-expr> -> Expr
+;; Parsea una expresión s 
 (define (parse s-expr)
   (match s-expr
     [(? number?) (real s-expr)]  
@@ -222,8 +232,7 @@ Concrete syntax of expressions:
                                       bindings)])
            (with parsed-bindings (parse body))))]
 
-    [(? symbol?) (id s-expr)] 
-    [_ (error "Invalid expression" s-expr)])) 
+    [(? symbol?) (id s-expr)] )) 
 
 
 
@@ -238,21 +247,24 @@ Concrete syntax of expressions:
 (deftype CValue (compV r i))
 
 ;; from-CValue :: CValue -> Expr
+;; Toma un complejo y lo convierte en una expresión.
 (define (from-CValue v)
   (match v
       [(compV r i)
        (cond [(= i 0) (real r)]
-             [(= r 0) (imaginary )]
+             [(= r 0) (imaginary i)]
              [else (add (real r) (imaginary i) )])]))
 
 
 
 ;; cmplx+ :: CValue CValue -> CValue
+;; Suma dos numeros complejos
 (define (cmplx+ v1 v2)
        (match (list v1 v2)
          [(list (compV r1 i1) (compV r2 i2))   (compV (+ r1 r2) (+ i1 i2)) ]))
 
 ;; cmplx- :: CValue CValue -> CValue
+;;Resta dos numeros complejos
 (define (cmplx- v1 v2)
        (match (list v1 v2)
          [(list (compV r1 i1) (compV r2 i2))   (compV (- r1 r2) (- i1 i2)) ]))
@@ -272,6 +284,7 @@ Concrete syntax of expressions:
 
 
 ;; aux-subst :: [((<sym> <expr>))*] Symbol Expr -> [((<sym> <expr>))*]
+;; Función que substituye en los bindings y verifica usando otra función auxiliar llamada shadowing.
 (define (aux-subst bindings what for)
   (match bindings
     ['() '()]
@@ -283,6 +296,7 @@ Concrete syntax of expressions:
 
 
 ;; shadowing? :: [((<sym> <expr>))*] Symbol  -> Boolean
+;; Funcipon que dado bindings y what, verifica si es que hay shadowing usando recursión.
 (define (shadowing? bindings what)
   (match bindings
     ['() #f]
@@ -294,6 +308,7 @@ Concrete syntax of expressions:
 
 
 ;; subst :: Expr Symbol Expr -> Expr
+;; Substituye what por for en expr
 (define (subst expr what for)
   (match expr
     [(real r) (real r)]
@@ -321,6 +336,7 @@ Concrete syntax of expressions:
 ;;----- ;;
 
 ;; interp : Expr -> CValue
+;; Interpreta una expresión y lo lleva a numero complejo.
 (define (interp expr)
     (match expr
     [(real r) (compV r 0)]
@@ -332,12 +348,25 @@ Concrete syntax of expressions:
          (interp t-expr)
          (interp f-expr))]
     [(with bindings body)
-          (interp  (from-CValue (fold-bindings bindings body)))]))
+            (interp (fold-bindings bindings body))]))
   
-  
+;;  fold-bindings: (Listof (Pair Symbol Expr)) Expr -> Expr
+;; Función auxiliar que basicamente sirve para construir los nuevos bindings y el nuevo body, de acuerdo a lo que se quiera interpretar.
 (define (fold-bindings bindings body)
   (match bindings
     ['() body]
     [(cons (cons id expr) rest-bindings)
-     (let ([new-body (subst body id (interp expr))])
-       (fold-bindings rest-bindings new-body))]))
+     (let* ([val (interp expr)]
+            [new-body (subst body id (from-CValue val))]
+            [new-bindings (subst-bindings rest-bindings id (from-CValue val))])
+       (fold-bindings new-bindings new-body))]))
+
+;; subst-bindings:  (Listof (Pair Symbol Expr)) Symbol Expr -> (Listof (Pair Symbol Expr))
+;; Función auxiliar que reemplaza en los bindngs respectivos los valores que ya se interpretaron, esto sirve para los ejemplos donde
+;;hay bindings que se definen a partir de una variable que ya se definió.
+(define (subst-bindings bindings id val)
+  (map (lambda (binding)
+         (match binding
+           [(cons var expr)
+            (cons var (subst expr id val))]))
+       bindings))

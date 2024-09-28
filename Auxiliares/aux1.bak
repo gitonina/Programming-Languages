@@ -1,0 +1,22 @@
+#lang play
+(print-only-errors #t)
+;;Aux 1
+;;P1
+#|
+A) ¿Cual es la diferencia entre (cons 'a 'b ) y ( list 'a 'b')? Escriba el último en
+notación de pares.
+
+El primero es un par, donde el primer elemento es el simbolo 'a y el segundo elemento es el simbolo 'b. El segundo es una lista, donde tiene los mismos elementos
+pero ademas tiene un ultimo elemento que corresponde a la lista vacia.
+|#
+(test (list 'a 'b)  (cons 'a (cons 'b '())) )
+
+
+;;B)Escriba el código que genere la lista ' (1 (x (y . z) #f))
+
+
+;; Primera forma de escribirlo: (list 1 (list 'x (cons 'y 'z) #f))
+;;Segunda forma: (cons '1 (cons ( cons 'x (cons(cons 'y 'z) (cons #f '() ))) '())) 
+
+
+
